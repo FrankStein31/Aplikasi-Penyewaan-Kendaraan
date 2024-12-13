@@ -22,25 +22,57 @@ class DatabaseConnection:
             return None
 
     def execute_query(self, query, params=None):
-        connection = self.connect()
-        if connection:
-            try:
+        connection = None
+        cursor = None
+        try:
+            connection = self.connect()
+            if connection:
                 cursor = connection.cursor(dictionary=True)
                 if params:
                     cursor.execute(query, params)
                 else:
                     cursor.execute(query)
+                
+                # If it's a SELECT query, fetch results
+                if query.strip().upper().startswith('SELECT'):
+                    results = cursor.fetchall()
+                    return results
+                
+                # For INSERT, UPDATE, DELETE
                 connection.commit()
-                return cursor
-            except Error as e:
-                print(f"Error eksekusi query: {e}")
-                return None
-            finally:
+                return True
+        except Error as e:
+            print(f"Error eksekusi query: {e}")
+            return None
+        finally:
+            if cursor:
                 cursor.close()
+            if connection:
                 connection.close()
         return None
 
-# Membuat database dan tabel
+    def fetch_one(self, query, params=None):
+        connection = None
+        cursor = None
+        try:
+            connection = self.connect()
+            if connection:
+                cursor = connection.cursor(dictionary=True)
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                
+                return cursor.fetchone()
+        except Error as e:
+            print(f"Error fetch query: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
 def create_database_and_tables():
     db = DatabaseConnection()
     connection = mysql.connector.connect(

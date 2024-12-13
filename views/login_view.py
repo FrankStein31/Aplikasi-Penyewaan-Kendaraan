@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox
 from controllers.auth_controller import AuthController
 
 class LoginView:
@@ -7,8 +7,6 @@ class LoginView:
         self.root = root
         self.root.title("Rental Kendaraan - Login")
         self.root.geometry("400x300")
-        
-        self.auth_controller = AuthController()
         
         self.create_widgets()
     
@@ -41,7 +39,7 @@ class LoginView:
             return
         
         # Attempt login
-        user = self.auth_controller.login(username, password)
+        user, message = AuthController.login(username, password)
         if user:
             # Close login window
             self.root.destroy()
@@ -58,7 +56,7 @@ class LoginView:
                 UserDashboard(user_root, user)
                 user_root.mainloop()
         else:
-            messagebox.showerror("Login Gagal", "Username atau password salah!")
+            messagebox.showerror("Login Gagal", message)
     
     def open_register(self):
         # Open registration dialog
@@ -109,12 +107,12 @@ class LoginView:
                 return
             
             # Attempt registration
-            result = self.auth_controller.register(reg_data)
-            if result:
-                messagebox.showinfo("Sukses", "Registrasi berhasil!")
+            success, message = AuthController.register(reg_data)
+            if success:
+                messagebox.showinfo("Sukses", message)
                 register_window.destroy()
             else:
-                messagebox.showerror("Gagal", "Registrasi gagal. Coba lagi.")
+                messagebox.showerror("Gagal", message)
         
         # Submit button
         submit_btn = tk.Button(
