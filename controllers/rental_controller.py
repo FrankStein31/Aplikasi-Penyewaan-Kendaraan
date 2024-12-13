@@ -87,11 +87,10 @@ class RentalController:
             end_date
         )
         
-        cursor = db.execute_query(query, params)
+        results = db.execute_query(query, params)
         
-        if cursor:
-            result = cursor.fetchone()
-            return result['conflict_count'] > 0
+        if results and len(results) > 0:
+            return results[0]['conflict_count'] > 0
         
         return False
 

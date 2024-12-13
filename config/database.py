@@ -28,27 +28,40 @@ class DatabaseConnection:
             connection = self.connect()
             if connection:
                 cursor = connection.cursor(dictionary=True)
+                
+                # Execute query with or without parameters
                 if params:
                     cursor.execute(query, params)
                 else:
                     cursor.execute(query)
                 
-                # If it's a SELECT query, fetch results
-                if query.strip().upper().startswith('SELECT'):
+                query_type = query.strip().upper().split()[0]
+                
+                if query_type == 'SELECT':
                     results = cursor.fetchall()
                     return results
                 
-                # For INSERT, UPDATE, DELETE
-                connection.commit()
+                elif query_type in ['INSERT', 'UPDATE', 'DELETE']:
+                    connection.commit()
+                    
+                    if query_type == 'INSERT':
+                        return cursor
+                    
+                    return True
+                
                 return True
+        
         except Error as e:
             print(f"Error eksekusi query: {e}")
+            if connection:
+                connection.rollback()
             return None
         finally:
             if cursor:
                 cursor.close()
             if connection:
                 connection.close()
+        
         return None
 
     def fetch_one(self, query, params=None):
@@ -58,14 +71,38 @@ class DatabaseConnection:
             connection = self.connect()
             if connection:
                 cursor = connection.cursor(dictionary=True)
+                
                 if params:
                     cursor.execute(query, params)
                 else:
                     cursor.execute(query)
                 
                 return cursor.fetchone()
+        
         except Error as e:
             print(f"Error fetch query: {e}")
+            return None
+        finally:
+            if cursor:
+                cursor.close()
+            if connection:
+                connection.close()
+
+    def get_last_insert_id(self):
+        """
+        Helper method to get the last inserted ID
+        """
+        connection = None
+        cursor = None
+        try:
+            connection = self.connect()
+            if connection:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("SELECT LAST_INSERT_ID() as last_id")
+                result = cursor.fetchone()
+                return result['last_id'] if result else None
+        except Error as e:
+            print(f"Error getting last insert ID: {e}")
             return None
         finally:
             if cursor:
@@ -156,5 +193,4 @@ def create_database_and_tables():
     connection.close()
     print("Database dan tabel berhasil dibuat!")
 
-# Jalankan fungsi untuk membuat database
-create_database_and_tables()
+# create_database_and_tables()

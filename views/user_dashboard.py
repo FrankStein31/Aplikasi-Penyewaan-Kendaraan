@@ -1,3 +1,4 @@
+from models.vehicle import Vehicle
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from controllers.user_controller import UserController
@@ -95,7 +96,7 @@ class UserDashboard:
         
         # Load initial data
         self.load_active_rentals()
-    
+
     def load_active_rentals(self):
         # Clear existing items
         for i in self.active_rental_tree.get_children():
@@ -104,12 +105,15 @@ class UserDashboard:
         # Fetch active rentals for this user
         rentals = self.user_controller.get_active_rentals(self.user['id'])
         for rental in rentals:
+            # Get vehicle name from user controller or pass it separately
+            vehicle_name = self.user_controller.get_vehicle_name(rental.vehicle_id)
+            
             self.active_rental_tree.insert('', 'end', values=(
-                rental['id'], 
-                rental['kendaraan_nama'], 
-                rental['tanggal_mulai'], 
-                rental['tanggal_selesai'], 
-                rental['status']
+                rental.id, 
+                vehicle_name, 
+                rental.start_date, 
+                rental.end_date, 
+                rental.status
             ))
     
     def cancel_rental(self):
@@ -197,12 +201,17 @@ class UserDashboard:
         
         # Fetch rental history for this user
         rentals = self.user_controller.get_rental_history(self.user['id'])
+        
+        # Tambahkan join dengan tabel kendaraan untuk mendapatkan nama kendaraan
         for rental in rentals:
+            # Ambil nama kendaraan menggunakan vehicle_id
+            vehicle = Vehicle.get_by_id(rental.vehicle_id)
+            
             self.rental_history_tree.insert('', 'end', values=(
-                rental['id'], 
-                rental['kendaraan_nama'], 
-                rental['tanggal_mulai'], 
-                rental['tanggal_selesai'], 
-                f"Rp {rental['total_biaya']:,.2f}", 
-                rental['status']
+                rental.id, 
+                vehicle.nama if vehicle else 'Kendaraan Tidak Tersedia', 
+                rental.start_date, 
+                rental.end_date, 
+                f"Rp {rental.total_cost:,.2f}", 
+                rental.status
             ))

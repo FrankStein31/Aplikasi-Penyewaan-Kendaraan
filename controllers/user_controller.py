@@ -57,23 +57,62 @@ class UserController:
             from datetime import datetime
             end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
         
-        # Ambil semua kendaraan tersedia
-        vehicles = Vehicle.get_all(status='tersedia')
+        # Ambil semua kendaraan tersedia menggunakan list_kendaraan()
+        vehicle_obj = Vehicle()
+        vehicles = vehicle_obj.list_kendaraan(filter_status='tersedia')
         
         # Filter berdasarkan tipe kendaraan jika dipilih
         if vehicle_type_id:
-            vehicles = [v for v in vehicles if v.jenis_id == vehicle_type_id]
+            vehicles = [v for v in vehicles if v['jenis_id'] == vehicle_type_id]
         
         # Filter berdasarkan ketersediaan di rentang tanggal
         if start_date and end_date:
             available_vehicles = []
             for vehicle in vehicles:
-                if not RentalController.check_vehicle_availability(vehicle.id, start_date, end_date):
+                if vehicle_obj.cek_ketersediaan(vehicle['id'], start_date, end_date):
                     available_vehicles.append(vehicle)
-            
+                
             return available_vehicles
         
         return vehicles
+    
+    # Add these methods to the UserController class in user_controller.py
+
+    @staticmethod
+    def get_active_rentals(user_id):
+        """
+        Mendapatkan daftar pemesanan aktif pengguna
+        """
+        from models.rental import Rental
+        return Rental.get_active_rentals(user_id)
+    
+    @staticmethod
+    def get_vehicle_details(vehicle_ids):
+        """
+        Mengambil detail kendaraan berdasarkan ID
+        """
+        vehicles = []
+        for vehicle_id in vehicle_ids:
+            vehicle = Vehicle.get_by_id(vehicle_id)
+            if vehicle:
+                vehicles.append({
+                    'id': vehicle.id,
+                    'nama': vehicle.nama,
+                    'plat_nomor': vehicle.plat_nomor,
+                    'harga_sewa': vehicle.harga_sewa
+                })
+        return vehicles
+
+    @staticmethod
+    def cancel_rental(rental_id):
+        """
+        Membatalkan pemesanan
+        
+        :param rental_id: ID pemesanan yang akan dibatalkan
+        :return: Boolean yang menunjukkan keberhasilan pembatalan
+        """
+        from models.rental import Rental
+        return Rental.cancel_rental(rental_id)
 
     @staticmethod
     def get_rental_history(user_id):
@@ -125,3 +164,51 @@ class UserController:
                 })
         
         return successful_rentals, failed_rentals
+    
+    @staticmethod
+    def create_rental(rental_data):
+        """
+        Membuat pemesanan baru
+        
+        :param rental_data: Dictionary berisi detail pemesanan
+        - pengguna_id: ID pengguna
+        - vehicle_ids: Daftar ID kendaraan
+        - tanggal_mulai: Tanggal mulai sewa
+        - tanggal_selesai: Tanggal selesai sewa
+        - total_biaya: Total biaya sewa
+        :return: Hasil pembuatan pemesanan
+        """
+        from controllers.rental_controller import RentalController
+        
+        try:
+            # Buat pemesanan untuk setiap kendaraan
+            successful_rentals = []
+            for vehicle_id in rental_data['vehicle_ids']:
+                rental, message = RentalController.create_rental(
+                    rental_data['pengguna_id'], 
+                    vehicle_id, 
+                    rental_data['tanggal_mulai'], 
+                    rental_data['tanggal_selesai']
+                )
+                
+                if not rental:
+                    # Jika gagal membuat salah satu pemesanan, batalkan semua
+                    for successful_rental in successful_rentals:
+                        RentalController.cancel_rental(successful_rental.id)
+                    return False
+                
+                successful_rentals.append(rental)
+            
+            return True
+        
+        except Exception as e:
+            print(f"Error creating rental: {e}")
+            return False
+        
+    def get_vehicle_name(self, vehicle_id):
+        """
+        Get the name of a vehicle by its ID
+        """
+        from models.vehicle import Vehicle
+        vehicle = Vehicle.get_by_id(vehicle_id)
+        return vehicle.nama if vehicle else "Kendaraan Tidak Dikenal"

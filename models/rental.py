@@ -1,4 +1,4 @@
-# models/rental.py
+from models.vehicle import Vehicle
 from config.database import DatabaseConnection
 from datetime import datetime, date
 
@@ -14,6 +14,40 @@ class Rental:
         self.total_cost = total_cost
         self.status = status
 
+    @classmethod
+    def get_active_rentals(cls, user_id):
+        """
+        Mengambil semua pemesanan aktif milik seorang pengguna
+        """
+        db = DatabaseConnection()
+        query = "SELECT * FROM pemesanan WHERE pengguna_id = %s AND status IN ('menunggu', 'disetujui', 'sedang_berjalan')"
+        
+        # Handle both cursor and direct results
+        results = db.execute_query(query, (user_id,))
+        
+        rentals = []
+        if results:
+            # If results is a cursor, use fetchall()
+            if hasattr(results, 'fetchall'):
+                results = results.fetchall()
+            
+            # Ensure results is a list of dictionaries
+            if not isinstance(results, list):
+                results = [results]
+            
+            for result in results:
+                rental = cls(
+                    id=result['id'],
+                    user_id=result['pengguna_id'],
+                    vehicle_id=result['kendaraan_id'],
+                    start_date=result['tanggal_mulai'],
+                    end_date=result['tanggal_selesai'],
+                    total_cost=result['total_biaya'],
+                    status=result['status']
+                )
+                rentals.append(rental)
+        
+        return rentals
     def calculate_total_cost(self, vehicle_price_per_day):
         """
         Menghitung total biaya berdasarkan harga kendaraan per hari
@@ -59,26 +93,47 @@ class Rental:
         return None
 
     @classmethod
+    # def get_by_id(cls, rental_id):
+    #     """
+    #     Mengambil data pemesanan berdasarkan ID
+    #     """
+    #     db = DatabaseConnection()
+    #     query = "SELECT * FROM pemesanan WHERE id = %s"
+    #     cursor = db.execute_query(query, (rental_id,))
+        
+    #     if cursor:
+    #         result = cursor.fetchone()
+    #         if result:
+    #             return cls(
+    #                 id=result['id'],
+    #                 user_id=result['pengguna_id'],
+    #                 vehicle_id=result['kendaraan_id'],
+    #                 start_date=result['tanggal_mulai'],
+    #                 end_date=result['tanggal_selesai'],
+    #                 total_cost=result['total_biaya'],
+    #                 status=result['status']
+    #             )
+    #     return None
+    
     def get_by_id(cls, rental_id):
         """
         Mengambil data pemesanan berdasarkan ID
         """
         db = DatabaseConnection()
         query = "SELECT * FROM pemesanan WHERE id = %s"
-        cursor = db.execute_query(query, (rental_id,))
+        results = db.execute_query(query, (rental_id,))
         
-        if cursor:
-            result = cursor.fetchone()
-            if result:
-                return cls(
-                    id=result['id'],
-                    user_id=result['pengguna_id'],
-                    vehicle_id=result['kendaraan_id'],
-                    start_date=result['tanggal_mulai'],
-                    end_date=result['tanggal_selesai'],
-                    total_cost=result['total_biaya'],
-                    status=result['status']
-                )
+        if results:
+            result = results[0] if isinstance(results, list) else results
+            return cls(
+                id=result['id'],
+                user_id=result['pengguna_id'],
+                vehicle_id=result['kendaraan_id'],
+                start_date=result['tanggal_mulai'],
+                end_date=result['tanggal_selesai'],
+                total_cost=result['total_biaya'],
+                status=result['status']
+            )
         return None
 
     @classmethod
@@ -88,11 +143,14 @@ class Rental:
         """
         db = DatabaseConnection()
         query = "SELECT * FROM pemesanan WHERE pengguna_id = %s"
-        cursor = db.execute_query(query, (user_id,))
+        results = db.execute_query(query, (user_id,))
         
         rentals = []
-        if cursor:
-            results = cursor.fetchall()
+        if results:
+            # Pastikan results adalah list
+            if not isinstance(results, list):
+                results = [results]
+            
             for result in results:
                 rental = cls(
                     id=result['id'],
@@ -119,3 +177,34 @@ class Rental:
             self.status = new_status
             return True
         return False
+    
+    @classmethod
+    def cancel_rental(cls, rental_id):
+        """
+        Membatalkan pemesanan berdasarkan ID
+        
+        Args:
+            rental_id (int): ID pemesanan yang akan dibatalkan
+        
+        Returns:
+            bool: True jika pembatalan berhasil, False jika gagal
+        """
+        # Ambil objek rental
+        rental = cls.get_by_id(rental_id)
+        
+        if not rental:
+            return False
+        
+        # Cek apakah rental masih bisa dibatalkan
+        if rental.status not in ['menunggu', 'disetujui']:
+            return False, "Pemesanan tidak dapat dibatalkan"
+        
+        # Update status rental menjadi ditolak
+        result = rental.update_status('ditolak')
+        
+        if result:
+            # Kembalikan status kendaraan
+            Vehicle.update_vehicle_status(rental.vehicle_id, 'tersedia')
+            return True, "Pemesanan berhasil dibatalkan"
+        
+        return result

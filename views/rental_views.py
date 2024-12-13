@@ -12,6 +12,9 @@ class RentalView:
         self.user = user
         self.vehicle_ids = vehicle_ids
         self.user_controller = user_controller
+
+        # Create StringVar for total cost
+        self.total_cost_var = tk.StringVar()
         
         # Create rental form
         self.create_rental_form()
@@ -31,9 +34,6 @@ class RentalView:
             self.selected_vehicles_tree.heading(col, text=col)
         self.selected_vehicles_tree.pack(fill='x', pady=(0, 10))
         
-        # Load selected vehicles
-        self.load_selected_vehicles()
-        
         # Rental Period
         tk.Label(main_frame, text="Periode Sewa", font=("Arial", 12, "bold")).pack(pady=(10, 5))
         
@@ -50,7 +50,7 @@ class RentalView:
         end_frame.pack(fill='x', pady=5)
         tk.Label(end_frame, text="Tanggal Selesai:").pack(side='left', padx=(0, 10))
         self.end_date = DateEntry(end_frame, width=12, background='darkblue', foreground='white', 
-                                  date_pattern='y-mm-dd', mindate=date.today())
+                                date_pattern='y-mm-dd', mindate=date.today())
         self.end_date.pack(side='left')
         
         # Total Cost Display
@@ -67,10 +67,18 @@ class RentalView:
         # Confirm Rental Button
         confirm_btn = tk.Button(main_frame, text="Konfirmasi Sewa", command=self.confirm_rental)
         confirm_btn.pack(pady=20)
+
+        # Load selected vehicles
+        self.load_selected_vehicles()
     
     def load_selected_vehicles(self):
         # Fetch details of selected vehicles
         vehicles = self.user_controller.get_vehicle_details(self.vehicle_ids)
+        
+        if not vehicles:
+            messagebox.showerror("Error", "Tidak ada kendaraan yang dipilih")
+            self.root.destroy()
+            return
         
         for vehicle in vehicles:
             self.selected_vehicles_tree.insert('', 'end', values=(

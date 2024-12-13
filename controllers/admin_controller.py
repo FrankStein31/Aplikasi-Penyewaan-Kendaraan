@@ -14,39 +14,34 @@ class AdminController:
         Menambahkan jenis kendaraan baru
         """
         vehicle_type = VehicleType(nama=name, deskripsi=description)
-        return vehicle_type.save()
+        return vehicle_type.tambah_jenis_kendaraan()
 
     @staticmethod
     def update_vehicle_type(type_id, name=None, description=None):
         """
         Memperbarui jenis kendaraan
         """
-        vehicle_type = VehicleType.get_by_id(type_id)
-        if not vehicle_type:
-            return False, "Jenis kendaraan tidak ditemukan"
-        
+        vehicle_type = VehicleType()
+        vehicle_type.id = type_id
         if name:
             vehicle_type.nama = name
         if description:
             vehicle_type.deskripsi = description
         
-        return vehicle_type.update()
+        return vehicle_type.update_jenis_kendaraan()
 
     @staticmethod
     def delete_vehicle_type(type_id):
         """
         Menghapus jenis kendaraan
         """
-        vehicle_type = VehicleType.get_by_id(type_id)
-        if not vehicle_type:
-            return False, "Jenis kendaraan tidak ditemukan"
-        
-        return vehicle_type.delete()
+        vehicle_type = VehicleType()
+        return vehicle_type.hapus_jenis_kendaraan(type_id)
 
     @staticmethod
-    def get_all_vehicle_types():
+    def get_vehicle_types():
         """
-        Mendapatkan semua jenis kendaraan
+        Mendapatkan semua jenis kendaraan untuk dropdown
         """
         return VehicleType.get_all()
 
@@ -62,46 +57,38 @@ class AdminController:
             plat_nomor=plate_number, 
             harga_sewa=rental_price
         )
-        return vehicle.save()
+        return vehicle.tambah_kendaraan()
 
     @staticmethod
     def update_vehicle(vehicle_id, vehicle_type_id=None, name=None, 
-                       plate_number=None, rental_price=None):
+                    plate_number=None, rental_price=None):
         """
         Memperbarui data kendaraan
         """
-        vehicle = Vehicle.get_by_id(vehicle_id)
-        if not vehicle:
-            return False, "Kendaraan tidak ditemukan"
-        
-        if vehicle_type_id:
-            vehicle.jenis_id = vehicle_type_id
-        if name:
-            vehicle.nama = name
-        if plate_number:
-            vehicle.plat_nomor = plate_number
-        if rental_price is not None:
-            vehicle.harga_sewa = rental_price
-        
-        return vehicle.update()
+        vehicle = Vehicle(
+            jenis_id=vehicle_type_id, 
+            nama=name, 
+            plat_nomor=plate_number, 
+            harga_sewa=rental_price
+        )
+        vehicle.id = vehicle_id
+        return vehicle.update_kendaraan()
 
     @staticmethod
     def delete_vehicle(vehicle_id):
         """
         Menghapus kendaraan
         """
-        vehicle = Vehicle.get_by_id(vehicle_id)
-        if not vehicle:
-            return False, "Kendaraan tidak ditemukan"
-        
-        return vehicle.delete()
+        vehicle = Vehicle()
+        return vehicle.hapus_kendaraan(vehicle_id)
 
     @staticmethod
-    def get_all_vehicles(status=None):
+    def get_all_vehicles():
         """
-        Mendapatkan semua kendaraan, dapat difilter berdasarkan status
+        Mendapatkan semua kendaraan dengan informasi jenis kendaraan
         """
-        return Vehicle.get_all(status)
+        vehicle = Vehicle()
+        return vehicle.list_kendaraan()
 
     # Manajemen Pengguna
     @staticmethod

@@ -9,6 +9,11 @@ class VehicleType:
 
     def tambah_jenis_kendaraan(self):
         """Menambahkan jenis kendaraan baru"""
+        # Validate unique name first
+        if not self.validasi_nama_unik(self.nama):
+            print("Nama jenis kendaraan sudah ada")
+            return False
+
         query = """
         INSERT INTO jenis_kendaraan 
         (nama, deskripsi) 
@@ -18,9 +23,12 @@ class VehicleType:
 
         try:
             cursor = self.db.execute_query(query, params)
-            if cursor:
-                self.id = cursor.lastrowid
-                return True
+            print("Nama jenis kendaraan berhasil ditambah")
+            if cursor is not None:
+                last_id = self.db.get_last_insert_id()
+                if last_id:
+                    self.id = last_id
+                    return True
             return False
         except Exception as e:
             print(f"Error tambah jenis kendaraan: {e}")
@@ -64,10 +72,9 @@ class VehicleType:
         params = (jenis_id,)
 
         try:
-            cursor = self.db.execute_query(query, params)
-            if cursor:
-                return cursor.fetchone()
-            return None
+            # Use fetch_one for single result queries
+            result = self.db.fetch_one(query, params)
+            return result
         except Exception as e:
             print(f"Error ambil jenis kendaraan: {e}")
             return None
@@ -82,10 +89,9 @@ class VehicleType:
         """
 
         try:
-            cursor = self.db.execute_query(query)
-            if cursor:
-                return cursor.fetchall()
-            return []
+            # Directly return the results from execute_query
+            results = self.db.execute_query(query)
+            return results if results is not None else []
         except Exception as e:
             print(f"Error list jenis kendaraan: {e}")
             return []
@@ -103,15 +109,12 @@ class VehicleType:
         params = (jenis_id,)
 
         try:
-            cursor = self.db.execute_query(query, params)
-            if cursor:
-                result = cursor.fetchone()
-                return result['jumlah'] > 0
-            return False
+            result = self.db.fetch_one(query, params)
+            return result['jumlah'] > 0 if result else False
         except Exception as e:
             print(f"Error cek kendaraan by jenis: {e}")
             return False
-
+        
     def validasi_nama_unik(self, nama):
         """
         Memastikan nama jenis kendaraan unik
@@ -120,11 +123,18 @@ class VehicleType:
         params = (nama,)
 
         try:
-            cursor = self.db.execute_query(query, params)
-            if cursor:
-                result = cursor.fetchone()
-                return result['jumlah'] == 0
-            return False
+            # Use fetch_one for aggregate queries
+            result = self.db.fetch_one(query, params)
+            return result['jumlah'] == 0 if result else False
         except Exception as e:
             print(f"Error validasi nama jenis kendaraan: {e}")
             return False
+        
+    @classmethod
+    def get_all(cls):
+        """
+        Mendapatkan daftar semua jenis kendaraan
+        """
+        db_connection = DatabaseConnection()
+        vehicle_type = cls()
+        return vehicle_type.list_jenis_kendaraan()

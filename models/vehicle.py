@@ -10,6 +10,29 @@ class Vehicle:
         self.status = status
         self.db = DatabaseConnection()
 
+    @staticmethod
+    def update_vehicle_status(vehicle_id, new_status):
+        """
+        Update the status of a vehicle
+        
+        Args:
+            vehicle_id (int): ID of the vehicle to update
+            new_status (str): New status of the vehicle (e.g., 'tersedia', 'disewa')
+        
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        db = DatabaseConnection()
+        query = "UPDATE kendaraan SET status = %s WHERE id = %s"
+        params = (new_status, vehicle_id)
+        
+        try:
+            cursor = db.execute_query(query, params)
+            return cursor is not None
+        except Exception as e:
+            print(f"Error updating vehicle status: {e}")
+            return False
+
     def tambah_kendaraan(self):
         """Menambahkan kendaraan baru"""
         query = """
@@ -71,6 +94,39 @@ class Vehicle:
             print(f"Error hapus kendaraan: {e}")
             return False
 
+    @classmethod
+    def get_by_id(cls, kendaraan_id):
+        """Mendapatkan detail kendaraan berdasarkan ID"""
+        # Create an instance of the class to use the database connection
+        vehicle_instance = cls()
+    
+        query = """
+        SELECT k.*, jk.nama as jenis_nama
+        FROM kendaraan k
+        JOIN jenis_kendaraan jk ON k.jenis_id = jk.id
+        WHERE k.id = %s
+        """
+        params = (kendaraan_id,)
+        try:
+            # Use fetch_one method instead of execute_query
+            result = vehicle_instance.db.fetch_one(query, params)
+            
+            if result:
+                # Create a new Vehicle instance with the fetched data
+                vehicle = cls(
+                    jenis_id=result['jenis_id'],
+                    nama=result['nama'],
+                    plat_nomor=result['plat_nomor'],
+                    harga_sewa=result['harga_sewa'],
+                    status=result['status']
+                )
+                vehicle.id = result['id']
+                return vehicle
+            return None
+        except Exception as e:
+            print(f"Error ambil kendaraan: {e}")
+            return None
+
     def get_kendaraan_by_id(self, kendaraan_id):
         """Mendapatkan detail kendaraan berdasarkan ID"""
         query = """
@@ -113,10 +169,8 @@ class Vehicle:
             params.append(filter_jenis)
 
         try:
-            cursor = self.db.execute_query(query, tuple(params) if params else None)
-            if cursor:
-                return cursor.fetchall()
-            return []
+            results = self.db.execute_query(query, tuple(params) if params else None)
+            return results if results else []
         except Exception as e:
             print(f"Error list kendaraan: {e}")
             return []
